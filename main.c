@@ -11,7 +11,7 @@
 #define SOR          2
 
 #define METHOD       0
-
+#define NUM_THREADS  1
 #define FLOAT8
 
 #ifdef FLOAT8
@@ -41,17 +41,20 @@ main ()
  int itr = 0;
 
 /**/
- FILE *fptr = fopen("potential","w");
+ FILE *fptr  = fopen("potential","w");
+ FILE *fptr1 = fopen("w_vs_itr","w");
 
 #if ( METHOD == SOR )
 /* overrelaxation parameter(1<w<2)*/
-  real w = 1.1;
+  real w=(real)1.4;
   real correction;
+  int Ndw = 20;
+  real dw = (real)1.0 / (real)Ndw;
 #endif
 
 /*number of grids*/
-  const int Nx = 128;
-  const int Ny = 128;
+  const int Nx = 32;
+  const int Ny = 32;
 
 /*size of computational domain*/
   const size_t Lx = 1;
@@ -109,6 +112,12 @@ main ()
     ExactPotential[Nx-1][y] = Potential[Nx-1][y];
   }
 
+//for (int iw=1;iw<Ndw;iw++)   
+//{
+//
+//   w = 1.0 + dw*iw;
+//   itr = 0; 
+
 /*initial guess*/
 #pragma omp parallel for collapse(2)
   for(int x=1; x<Nx-1 ;x++)
@@ -117,105 +126,112 @@ main ()
 
   Timer.Start();
 
-/* perform relaxation */
-  do{
-            itr++;
-     
-#           if ( METHOD == SOR )  /*Successive Overrelaxation*/
 
-            /* update odd cells */
-#           pragma omp parallel for collapse(2) reduction(+:Error) private(correction)
-            for(int x=1; x<Nx-1 ;x++)
-            for(int y=1; y<Ny-1 ;y++)
-            {
-               if ( (x+y)%2 == 1 )
+/* perform relaxation */
+     do{
+               Error=(real)0.0;
+               itr++;
+        
+#              if ( METHOD == SOR )  /*Successive Overrelaxation*/
+
+               /* update odd cells */
+#              pragma omp parallel for collapse(2) reduction(+:Error) private(correction) num_threads(NUM_THREADS)
+               for(int x=1; x<Nx-1 ;x++)
+               for(int y=1; y<Ny-1 ;y++)
                {
-                   correction = (real)0.25 * w * (   Potential[x+1][y  ]
+                  if ( (x+y)%2 == 1 )
+                  {
+                      correction = (real)0.25 * w * (   Potential[x+1][y  ]
+                                                      + Potential[x-1][y  ]
+                                                      + Potential[x  ][y+1]
+                                                      + Potential[x  ][y-1] - dx*dy * Mass[x][y] -(real)4.0 * Potential[x][y] );
+
+                     /*sum of error*/
+                     Error += FABS( correction/Potential[x][y] );
+      
+                     /*update*/
+                     Potential[x][y] += correction;
+                  }
+               }
+
+
+               /* update even cells */
+#              pragma omp parallel for collapse(2) reduction(+:Error) private(correction) num_threads(NUM_THREADS)
+               for(int x=1; x<Nx-1 ;x++)
+               for(int y=1; y<Ny-1 ;y++)
+               {
+                  if ( (x+y)%2 == 0 )
+                  {
+                     correction = (real)0.25 * w * ( Potential[x+1][y  ]
                                                    + Potential[x-1][y  ]
                                                    + Potential[x  ][y+1]
                                                    + Potential[x  ][y-1] - dx*dy * Mass[x][y] -(real)4.0 * Potential[x][y] );
 
-                  /*sum of error*/
-                  Error += FABS( correction/Potential[x][y] );
-   
-                  /*update*/
-                  Potential[x][y] += correction;
+                     /*sum of error*/
+                     Error += FABS( correction/Potential[x][y] );
+      
+                     /*update*/
+                     Potential[x][y] += correction;
+              	   }
                }
-            }
 
 
-            /* update even cells */
-#           pragma omp parallel for collapse(2) reduction(+:Error) private(correction)
-            for(int x=1; x<Nx-1 ;x++)
-            for(int y=1; y<Ny-1 ;y++)
-            {
-               if ( (x+y)%2 == 0 )
+#              elif ( METHOD == GAUSS_SEIDEL )
+
+
+               for(int x=1; x<Nx-1 ;x++)
+               for(int y=1; y<Ny-1 ;y++)
                {
-                  correction = (real)0.25 * w * ( Potential[x+1][y  ]
-                                                + Potential[x-1][y  ]
-                                                + Potential[x  ][y+1]
-                                                + Potential[x  ][y-1] - dx*dy * Mass[x][y] -(real)4.0 * Potential[x][y] );
+                  /*Gauss-Seidal*/
+                  real delta = (real)0.25*(   Potential[x+1][y  ]   
+                                            + Potential[x-1][y  ]   
+                                            + Potential[x  ][y+1] 
+                                            + Potential[x  ][y-1] - dx*dy * Mass[x][y] );    
 
                   /*sum of error*/
-                  Error += FABS( correction/Potential[x][y] );
-   
-                  /*update*/
-                  Potential[x][y] += correction;
-	       	   }
-            }
+                  Error += FABS( delta - Potential[x][y] );                                                                            
 
 
-#           elif ( METHOD == GAUSS_SEIDEL )
+                  Potential[x][y] = delta;
+               }
 
 
-            for(int x=1; x<Nx-1 ;x++)
-            for(int y=1; y<Ny-1 ;y++)
-            {
-               /*Gauss-Seidal*/
-               real delta = (real)0.25*(   Potential[x+1][y  ]   
-                                         + Potential[x-1][y  ]   
-                                         + Potential[x  ][y+1] 
-                                         + Potential[x  ][y-1] - dx*dy * Mass[x][y] );    
+#              elif ( METHOD == JACOBI )
 
+
+               for(int x=1; x<Nx-1 ;x++)
+               for(int y=1; y<Ny-1 ;y++)
+               {
+                  Potential_New[x][y] = (real)0.25*(   Potential[x+1][y  ] 
+                                                     + Potential[x-1][y  ] 
+                                                     + Potential[x  ][y+1] 
+                                                     + Potential[x  ][y-1] - dx*dy * Mass[x][y] );     
+         
+         
                /*sum of error*/
-               Error += FABS( delta - Potential[x][y] );                                                                            
+                 Error += FABS( Potential_New[x][y] - Potential[x][y] );
+              
+               }
+         
+               /*memory copy*/
+               for(int x=0; x<Nx-1 ;x++)
+               for(int y=0; y<Ny-1 ;y++)
+                 Potential[x][y] = Potential_New[x][y];
+         
+
+#              endif
 
 
-               Potential[x][y] = delta;
-            }
+            /*calculate L-1 norm error*/
+            Error /= (real)((Nx-2)*(Ny-2));
+
+     }while( Error >= Threshold );
 
 
-#           elif ( METHOD == JACOBI )
-
-
-            for(int x=1; x<Nx-1 ;x++)
-            for(int y=1; y<Ny-1 ;y++)
-            {
-               Potential_New[x][y] = (real)0.25*(   Potential[x+1][y  ] 
-                                                  + Potential[x-1][y  ] 
-                                                  + Potential[x  ][y+1] 
-                                                  + Potential[x  ][y-1] - dx*dy * Mass[x][y] );     
-      
-      
-            /*sum of error*/
-              Error += FABS( Potential_New[x][y] - Potential[x][y] );
-           
-            }
-      
-            /*memory copy*/
-            for(int x=0; x<Nx-1 ;x++)
-            for(int y=0; y<Ny-1 ;y++)
-              Potential[x][y] = Potential_New[x][y];
-      
-
-#           endif
-
-
-         /*calculate L-1 norm error*/
-         Error /= (real)((Nx-2)*(Ny-2));
-
-
-  }while( Error >= Threshold );
+//  fprintf(fptr1,"%f  %d  %10.8e\n", w, itr, Error);
+//
+//
+//  }
 
   Timer.Stop();
 
@@ -249,12 +265,14 @@ L1Error /= (real)((Nx-2)*(Ny-2));
 /*output data*/
    
    /*header*/
+   fprintf(fptr,"#performance: %5.3e\n",(double)(Nx*Ny)/Timer.GetValue());
+   fprintf(fptr, "#number of threads: %d\n", NUM_THREADS);
    fprintf(fptr, "#L1Error: %20.16e\n", L1Error);
    fprintf(fptr, "#Elapsed Time: %15.8e\n", Timer.GetValue());
    fprintf(fptr, "#iterations: %d\n", itr);
    fprintf(fptr, "#========================================================\n");
-   fprintf( fptr, "%13s  %14s  %14s %16s %20s %20s",
-            "#x[1]", "y[2]", "Mass[3]", "Potential[4]", "ExactPotential[5]", "RelativeError[6]\n");
+   fprintf( fptr, "%13s  %14s  %14s %16s %20s %20s\n",
+            "#x[1]", "y[2]", "Mass[3]", "Potential[4]", "ExactPotential[5]", "RelativeError[6]" );
 
    /*data*/
 #  pragma omp parallel for collapse(2) ordered
@@ -262,7 +280,7 @@ L1Error /= (real)((Nx-2)*(Ny-2));
    for(int y=0; y<Ny ;y++)
       #pragma omp ordered
       fprintf(fptr, "%10.7e   %10.7e   %10.7e   %10.7e   %10.7e   %10.7e\n",
-         x*dx, y*dy, Mass[x][y], Potential[x][y], ExactPotential[x][y], RelativeError[x][y]);
+         x*dx, y*dy, Mass[x][y], Potential[x][y], ExactPotential[x][y], RelativeError[x][y] );
 
 
   return 0;
