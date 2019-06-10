@@ -1,0 +1,10 @@
+*.o
+.*.swp
+.*.swo
+*~
+a.out
+*.dat
+*.png
+log
+accuracy
+potential
