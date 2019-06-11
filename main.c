@@ -1,3 +1,9 @@
+/*======================================================================*/
+// Project    : Poisson solver with SOR, Gauss-Seidel and Jacobi scheme
+// Parallelism: OpenMP
+// Deeveloper : Tseng, Po-Hsun
+// Date       : 11 June 2019
+/*=======================------=========================================*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
