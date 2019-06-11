@@ -10,7 +10,7 @@
 #define GAUSS_SEIDEL 1
 #define SOR          2
 
-#define METHOD       0
+#define METHOD       2
 #define NUM_THREADS  1
 #define FLOAT8
 
@@ -46,15 +46,18 @@ main ()
 
 #if ( METHOD == SOR )
 /* overrelaxation parameter(1<w<2)*/
-  real w=(real)1.4;
+//    N               w
+//  128          1.9525
+//  256          1.9767
+  real w=(real)1.9767;
   real correction;
-  int Ndw = 20;
+  int Ndw = 10000;
   real dw = (real)1.0 / (real)Ndw;
 #endif
 
 /*number of grids*/
-  const int Nx = 32;
-  const int Ny = 32;
+  const int Nx = 256;
+  const int Ny = Nx;
 
 /*size of computational domain*/
   const size_t Lx = 1;
@@ -73,7 +76,7 @@ main ()
 
 
   real Error = 0.0;
-  real Threshold = (real)(EPSILON);
+  real Threshold = (real)(100*EPSILON);
 
 
 
@@ -115,7 +118,7 @@ main ()
 //for (int iw=1;iw<Ndw;iw++)   
 //{
 //
-//   w = 1.0 + dw*iw;
+//   w = 1.95 + dw*iw;
 //   itr = 0; 
 
 /*initial guess*/
@@ -228,7 +231,7 @@ main ()
      }while( Error >= Threshold );
 
 
-//  fprintf(fptr1,"%f  %d  %10.8e\n", w, itr, Error);
+//  printf("%f  %d  %10.8e\n", w, itr, Error);
 //
 //
 //  }
