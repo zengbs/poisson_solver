@@ -1,9 +1,10 @@
 /*======================================================================*/
 // Project    : Poisson solver with SOR, Gauss-Seidel and Jacobi scheme
 // Parallelism: OpenMP
-// Deeveloper : Tseng, Po-Hsun
 // Date       : 11 June 2019
-/*=======================------=========================================*/
+/*======================================================================*/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +17,10 @@
 #define GAUSS_SEIDEL 1
 #define SOR          2
 
-#define METHOD       2
+#define METHOD       0 /* JACOBI, GAUSS_SEIDEL, or SOR */
 #define NUM_THREADS  1
 #define FLOAT8
+#define SQR( x )  ( (x) * (x) )
 
 #ifdef FLOAT8
 #define real      double
@@ -34,24 +36,21 @@
 #define EPSILON   __FLT_EPSILON__
 #endif
 
-#define SQR( x )  ( (x) * (x) )
 
 void **calloc_2d_array (size_t nr, size_t nc, size_t size);
 
 
-int
-main ()
+int main ()
 {
  Timer_t Timer;
 
  int itr = 0;
 
-/**/
- FILE *fptr  = fopen("potential","w");
- FILE *fptr1 = fopen("w_vs_itr","w");
+/* Create files */
+ FILE *fptr  = fopen("Potential","w");
 
 #if ( METHOD == SOR )
-/* overrelaxation parameter(1<w<2)*/
+/* Overrelaxation parameter(1<w<2)*/
 //    N               w
 //  128          1.9525
 //  256          1.9767
@@ -61,23 +60,23 @@ main ()
   real dw = (real)1.0 / (real)Ndw;
 #endif
 
-/*number of grids*/
-  const int Nx = 256;
+/*Number of grids*/
+  const int Nx = 128;
   const int Ny = Nx;
 
-/*size of computational domain*/
+/*Size of computational domain*/
   const size_t Lx = 1;
   const size_t Ly = 1;
 
-/*memory allocation*/
+/*Memory allocation*/
   real **Mass           = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
   real **Potential      = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
 # if ( METHOD == JACOBI )
   real **Potential_New  = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
 # endif
-/*exact solution*/
+/*Exact solution*/
   real **ExactPotential = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
-/*relative error between exact and numerical solution*/
+/*Relative error between exact and numerical solution*/
   real **RelativeError  = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
 
 
@@ -98,7 +97,7 @@ main ()
     real x=i*dx;
     real y=j*dy;
 
-    Mass[i][j] = (float)2.0*x*(y-(float)1.0)*(y-(float)2*x+x*y+(float)2)*exp(x-y);
+    Mass[i][j] = (real)2.0*x*(y-(real)1.0)*(y-(real)2*x+x*y+(real)2)*exp(x-y);
   }
 
 /* Give BC condition along x-direction*/
@@ -127,16 +126,18 @@ main ()
 //   w = 1.95 + dw*iw;
 //   itr = 0; 
 
-/*initial guess*/
+/*Initial guess for potential*/
 #pragma omp parallel for collapse(2)
   for(int x=1; x<Nx-1 ;x++)
   for(int y=1; y<Ny-1 ;y++)
     Potential[x][y] = (real)0.5;
 
+
+/* Start timer */
   Timer.Start();
 
 
-/* perform relaxation */
+/* Perform relaxation */
      do{
                Error=(real)0.0;
                itr++;
@@ -259,7 +260,7 @@ for(int j=0; j<Ny ;j++)
      real x=i*dx;
      real y=j*dy;
 
-     ExactPotential[i][j] = x*y*((float)1-x)*((float)1-y)*exp(x-y);
+     ExactPotential[i][j] = x*y*((real)1-x)*((real)1-y)*exp(x-y);
 
      /*calculate relative error between exact and numerical solution*/
      RelativeError[i][j] = (real)1.0 - ExactPotential[i][j] / Potential[i][j];
@@ -296,8 +297,7 @@ L1Error /= (real)((Nx-2)*(Ny-2));
 }
 
 
-void **
-calloc_2d_array (size_t nr, size_t nc, size_t size)
+void **calloc_2d_array (size_t nr, size_t nc, size_t size)
 {
   void **array;
   size_t i;

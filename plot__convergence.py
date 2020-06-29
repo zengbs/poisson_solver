@@ -36,26 +36,29 @@ N         = np.loadtxt( table3,   usecols=(0)        , unpack=True )
 # plot the performance
 # ============================================================
 #L1 error
-ax[0][0].plot( N,    SOR[1]            , 'r-o', mec='r', lw=2, ms=20,                label='SOR' )
-ax[0][0].plot( N,     GS[1]            , 'g-v', mec='g', lw=2, ms=15,                label='Gauss-Seidel' )
-ax[0][0].plot( N, Jacobi[1]            , 'b-x', mec='b', lw=2, ms=20,                label='Jacobi' )
+ax[0][0].plot( N,    SOR[1]                  , 'r-o', mec='r', lw=2, ms=20,                label='SOR' )
+ax[0][0].plot( N,     GS[1]                  , 'g-v', mec='g', lw=2, ms=15,                label='Gauss-Seidel' )
+ax[0][0].plot( N, Jacobi[1]                  , 'b-x', mec='b', lw=2, ms=20,                label='Jacobi' )
 ax[0][0].plot( N, Jacobi[1][0]*(N/N[0])**-2.0, 'k-',   lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{-2}$' )
 
 #elapsed time
-ax[1][0].plot( N,    SOR[2]            , 'r-o', mec='k', lw=2, ms=6,                label='SOR' )
-ax[1][0].plot( N,     GS[2]            , 'g-o', mec='k', lw=2, ms=6,                label='Gauss-Seidel' )
-ax[1][0].plot( N, Jacobi[2]            , 'b-o', mec='k', lw=2, ms=6,                label='Jacobi' )
-ax[1][0].plot( N, 0.1*(N/N[0])**4.0, 'k-',     lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{4}$' )
-ax[1][0].plot( N, SOR[2][0]*(N/N[0])**2.0, 'k>',     lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{2}$' )
+# ============================================================
+ax[1][0].plot( N,    SOR[2]              , 'r-o', mec='k', lw=2, ms=6,                label='SOR' )
+ax[1][0].plot( N,     GS[2]              , 'g-o', mec='k', lw=2, ms=6,                label='Gauss-Seidel' )
+ax[1][0].plot( N, Jacobi[2]              , 'b-o', mec='k', lw=2, ms=6,                label='Jacobi' )
+ax[1][0].plot( N, 0.1*(N/N[0])**4.0      , 'k-',           lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{4}$' )
+ax[1][0].plot( N, SOR[2][0]*(N/N[0])**2.0, 'k>',           lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{2}$' )
 
 #iterations
-ax[0][1].plot( N,    SOR[3]            , 'r-o', mec='k', lw=2, ms=6,                label='SOR' )
-ax[0][1].plot( N,     GS[3]            , 'g-o', mec='k', lw=2, ms=6,                label='Gauss-Seidel' )
-ax[0][1].plot( N, Jacobi[3]            , 'b-o', mec='k', lw=2, ms=6,                label='Jacobi' )
-ax[0][1].plot( N, 1e4*(N/N[0])**2.0, 'k-',     lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{2}$' )
-ax[0][1].plot( N, 300*(N/N[0]), 'kv',     lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{1}$' )
+# ============================================================
+ax[0][1].plot( N,    SOR[3]        , 'r-o',  mec='k', lw=2, ms=6                       , label='SOR'          )
+ax[0][1].plot( N,     GS[3]        , 'g-o',  mec='k', lw=2, ms=6                       , label='Gauss-Seidel' )
+ax[0][1].plot( N, Jacobi[3]        , 'b-o',  mec='k', lw=2, ms=6                       , label='Jacobi'       )
+ax[0][1].plot( N, 1e4*(N/N[0])**2.0, 'k-' ,           lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{2}$'      )
+ax[0][1].plot( N, 300*(N/N[0])     , 'kv' ,           lw=2, ms=5, dashes=LStyle_DashDot, label='$N^{1}$'      )
 
 #performance
+# ============================================================
 ax[1][1].plot( N,    SOR[4]            , 'r-o', mec='k', lw=2, ms=6,                label='SOR' )
 ax[1][1].plot( N,     GS[4]            , 'g-o', mec='k', lw=2, ms=6,                label='Gauss-Seidel' )
 ax[1][1].plot( N, Jacobi[4]            , 'b-o', mec='k', lw=2, ms=6,                label='Jacobi' )
@@ -90,6 +93,8 @@ ax[1][1].set_xlim( 10, 1000 )
 ax[1][1].set_xlabel( 'number of cells ($N$)', fontsize='large' )
 ax[1][1].set_ylabel( 'performance (cells/sec)',       fontsize='large' )
 ax[1][1].tick_params( which='both', tick2On=True, direction='in' )
+
+
 # add legend
 # ============================================================
 ax[0][0].legend( loc='lower left', numpoints=1, labelspacing=0.1, handletextpad=0.4,
@@ -105,6 +110,7 @@ ax[1][1].legend( loc='lower left', numpoints=1, labelspacing=0.1, handletextpad=
               borderpad=0.4, handlelength=2.7, fontsize='large' )
 
 # save/show figure
+# ============================================================
 plt.savefig( FileOut+".png", bbox_inches='tight', pad_inches=0.05 )
 #plt.savefig( FileOut+".pdf", bbox_inches='tight', pad_inches=0.05 )
 #plt.show()
