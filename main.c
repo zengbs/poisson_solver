@@ -17,10 +17,12 @@
 #define GAUSS_SEIDEL 1
 #define SOR          2
 
-#define METHOD       0 /* JACOBI, GAUSS_SEIDEL, or SOR */
-#define NUM_THREADS  1
+#define METHOD       SOR /* JACOBI, GAUSS_SEIDEL, or SOR */
+//#define NUM_THREADS
 #define FLOAT8
-#define SQR( x )  ( (x) * (x) )
+
+//#define NUM_NX
+
 
 #ifdef FLOAT8
 #define real      double
@@ -36,6 +38,7 @@
 #define EPSILON   __FLT_EPSILON__
 #endif
 
+#define SQR( x )  ( (x) * (x) )
 
 void **calloc_2d_array (size_t nr, size_t nc, size_t size);
 
@@ -49,20 +52,32 @@ int main ()
 /* Create files */
  FILE *fptr  = fopen("Potential","w");
 
-#if ( METHOD == SOR )
-/* Overrelaxation parameter(1<w<2)*/
-//    N               w
-//  128          1.9525
-//  256          1.9767
-  real w=(real)1.9767;
-  real correction;
-  int Ndw = 10000;
-  real dw = (real)1.0 / (real)Ndw;
-#endif
 
 /*Number of grids*/
-  const int Nx = 128;
+  const int Nx = NUM_NX;
   const int Ny = Nx;
+
+#if ( METHOD == SOR )
+/* Overrelaxation parameter(1<w<2)*/
+  real w, correction;
+
+  switch ( Nx )
+  {
+    case 32:
+     w=(real) 1.8200;
+     break;
+    case 64:
+     w=(real) 1.9200;
+     break;
+    case 128:
+     w=(real) 1.9525;
+     break;
+    case 256:
+     w=(real) 1.9767;
+     break;
+  }
+#endif
+
 
 /*Size of computational domain*/
   const size_t Lx = 1;
@@ -120,11 +135,6 @@ int main ()
     ExactPotential[Nx-1][y] = Potential[Nx-1][y];
   }
 
-//for (int iw=1;iw<Ndw;iw++)   
-//{
-//
-//   w = 1.95 + dw*iw;
-//   itr = 0; 
 
 /*Initial guess for potential*/
 #pragma omp parallel for collapse(2)
@@ -238,10 +248,6 @@ int main ()
      }while( Error >= Threshold );
 
 
-//  printf("%f  %d  %10.8e\n", w, itr, Error);
-//
-//
-//  }
 
   Timer.Stop();
 
@@ -274,23 +280,23 @@ L1Error /= (real)((Nx-2)*(Ny-2));
 
 /*output data*/
    
-   /*header*/
-   fprintf(fptr,"#performance: %5.3e\n",(double)(Nx*Ny)/Timer.GetValue());
-   fprintf(fptr, "#number of threads: %d\n", NUM_THREADS);
-   fprintf(fptr, "#L1Error: %20.16e\n", L1Error);
-   fprintf(fptr, "#Elapsed Time: %15.8e\n", Timer.GetValue());
-   fprintf(fptr, "#iterations: %d\n", itr);
-   fprintf(fptr, "#========================================================\n");
-   fprintf( fptr, "%13s  %14s  %14s %16s %20s %20s\n",
-            "#x[1]", "y[2]", "Mass[3]", "Potential[4]", "ExactPotential[5]", "RelativeError[6]" );
+ /*header*/
+ fprintf(fptr, "#cells/sec:    %20.3e\n",(double)(Nx*Ny)/Timer.GetValue());
+ fprintf(fptr, "#number of threads: %20d\n", NUM_THREADS);
+ fprintf(fptr, "#L1Error:      %20.16e\n", L1Error);
+ fprintf(fptr, "#Elapsed Time: %20.8e\n", Timer.GetValue());
+ fprintf(fptr, "#iterations: %20d\n", itr);
+ fprintf(fptr, "#========================================================\n");
+ fprintf( fptr, "%13s  %14s  %14s %16s %20s %20s\n",
+          "#x[1]", "y[2]", "Mass[3]", "Potential[4]", "ExactPotential[5]", "RelativeError[6]" );
 
-   /*data*/
-#  pragma omp parallel for collapse(2) ordered
-   for(int x=0; x<Nx ;x++)
-   for(int y=0; y<Ny ;y++)
-      #pragma omp ordered
-      fprintf(fptr, "%10.7e   %10.7e   %10.7e   %10.7e   %10.7e   %10.7e\n",
-         x*dx, y*dy, Mass[x][y], Potential[x][y], ExactPotential[x][y], RelativeError[x][y] );
+ /*data*/
+#pragma omp parallel for collapse(2) ordered
+ for(int x=0; x<Nx ;x++)
+ for(int y=0; y<Ny ;y++)
+    #pragma omp ordered
+    fprintf(fptr, "%10.7e   %10.7e   %10.7e   %10.7e   %10.7e   %10.7e\n",
+       x*dx, y*dy, Mass[x][y], Potential[x][y], ExactPotential[x][y], RelativeError[x][y] );
 
 
   return 0;
@@ -301,21 +307,24 @@ void **calloc_2d_array (size_t nr, size_t nc, size_t size)
 {
   void **array;
   size_t i;
+
   if ((array = (void **) calloc (nr, sizeof (void *))) == NULL)
-    {
-      printf ("[calloc_2d] failed to allocate mem for %d pointers\n", (int) nr);
-      return NULL;
-    }
+  {
+    printf ("[calloc_2d] failed to allocate mem for %d pointers\n", (int) nr);
+    return NULL;
+  }
+
   if ((array[0] = (void *) calloc (nr * nc, size)) == NULL)
-    {
-      printf ("[calloc_2d] failed to allocate memory (%d X %d of size %d)\n",
-	      (int) nr, (int) nc, (int) size);
-      free ((void *) array);
-      return NULL;
-    }
+  {
+    printf ("[calloc_2d] failed to allocate memory (%d X %d of size %d)\n",
+        (int) nr, (int) nc, (int) size);
+    free ((void *) array);
+    return NULL;
+  }
+
   for (i = 1; i < nr; i++)
-    {
-      array[i] = (void *) ((unsigned char *) array[0] + i * nc * size);
-    }
+  {
+    array[i] = (void *) ((unsigned char *) array[0] + i * nc * size);
+  }
   return array;
 }
