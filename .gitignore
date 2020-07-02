@@ -7,4 +7,6 @@ a.out
 *.png
 log
 accuracy
-potential
+Potential*
+Output__ComputingSpeed_vs_NumThreads_NUM_NX_*
+*.pdf

@@ -3,7 +3,7 @@
 
 rm Potential 
 
-NUM_NX=1024
+NUM_NX=256
 FileName="Output__ComputingSpeed_vs_NumThreads_NUM_NX_${NUM_NX}"
 printf "# NUM_NX = %d\n" $NUM_NX  > $FileName
 echo "# [1] cells/sec [2] number of threads" >> $FileName
