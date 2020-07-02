@@ -121,10 +121,10 @@ int main ( int argc, char *argv[]  )
   if ( MyRank == 0 )
 # endif
   {
-    /* Exact solution*/
+    /* Allocate for exact solution*/
     ExactPotential = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
 
-    /* Relative error between exact and numerical solution*/
+    /* Allocate for relative error between exact and numerical solution*/
     RelativeError  = (real **) calloc_2d_array (Nx, Ny, sizeof (real));
   }
 
@@ -219,14 +219,13 @@ int main ( int argc, char *argv[]  )
     Stop1   = false;
     Stop01  = false;
   }
-
 # endif
 
 
   /* Start timer */
   Timer.Start();
 
-  /* Perform relaxation */
+  /* Relax */
   do
   {
             Error=(real)0.0;
